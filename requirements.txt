@@ -1,0 +1,34 @@
+# ============================================
+# Browser Automation & AI Agent Dependencies
+# ============================================
+# Production-level requirements for app.py
+# Python 3.8+ required
+# ============================================
+
+# Browser automation framework with AI agent capabilities
+browser-use
+
+# OpenAI API client for GPT-4 Vision and chat completions
+openai
+
+# Environment variable management for secure credential storage
+python-dotenv
+
+# Image processing library for GIF frame extraction and manipulation
+Pillow
+
+# Numerical computing for image analysis
+numpy
+
+# Web interface framework for interactive UI
+streamlit
+
+# ============================================
+# Notes:
+# ============================================
+# - asyncio, base64, json, time, re, hashlib, os, pathlib, typing 
+#   are all part of Python standard library (no installation needed)
+# - Install all dependencies: pip install -r requirements.txt
+# - Create .env file with: GMAIL_USER, GMAIL_PASS, OPENAI_API_KEY
+# ============================================
+
