@@ -1,5 +1,5 @@
 # **Agent B**
-*Browser automation system with intelligent screenshot filtering.*
+*Browser automation system with intelligent screenshot captures.*
 
 Features:
 
@@ -232,6 +232,7 @@ streamlit run streamlit_app.py
 
 
 Enjoy using Agent B! ✨
+
 
 
 
