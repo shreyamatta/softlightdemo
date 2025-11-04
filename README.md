@@ -1,21 +1,17 @@
-# 🤖 Browser Automation Agent
+# **Agent B**
+###*Browser automation system with intelligent screenshot filtering.*
 
-AI-powered browser automation system with intelligent screenshot filtering and a beautiful Streamlit web interface.
+###Features:
 
----
+- **AI Agent**: Autonomous web browsing using natural language instructions
+- **Smart Screenshots**: Automatic capture with duplicate filtering
+- **GIF Recording**: Full session recordings for visual debugging
+- **Web Interface**: Streamlit UI for task management
+- **Task History**: Complete history with screenshot galleries
+- **Privacy-First**: Runs locally with credential redaction
 
-## 🌟 Features
 
-- **🤖 AI Agent**: Autonomous web browsing using natural language instructions
-- **📸 Smart Screenshots**: Automatic capture with GPT-4 Vision duplicate filtering
-- **🎥 GIF Recording**: Full session recordings for visual debugging
-- **🖥️ Web Interface**: Beautiful Streamlit UI for task management
-- **📊 Task History**: Complete history with screenshot galleries
-- **🔒 Privacy-First**: Runs locally with credential redaction
-
----
-
-## 🚀 Quick Start
+## **Quick Start**
 
 ### 1. Installation
 
@@ -29,12 +25,10 @@ pip install -r requirements.txt
 Create a `.env` file in the project root:
 
 ```env
-OPENAI_API_KEY=your_openai_api_key_here
+BROWSER_USE=your_browser-use_api_key_here
 GMAIL_USER=your.email@gmail.com
 GMAIL_PASS=your_gmail_app_password
 ```
-
-> **Note**: Use Gmail App Password (not regular password) from your Google Account settings.
 
 ### 3. Run the Application
 
@@ -52,9 +46,9 @@ Then open your browser to `http://localhost:8501`
 python app.py
 ```
 
----
 
-## 📖 Usage Guide
+
+## **Usage Guide**
 
 ### Streamlit Web Interface
 
@@ -79,37 +73,36 @@ python app.py
 
 ---
 
-## 🎯 Good Task Examples
+##  **Good Task Examples**
 
-✅ **Simple Search Tasks**
+✔ **Simple Search Tasks**
 ```
 Search for 'machine learning courses' on Google
 Go to YouTube and search for 'Python tutorials'
 Open Wikipedia and search for 'Artificial Intelligence'
 ```
 
-✅ **E-commerce Tasks**
+✔ **E-commerce Tasks**
 ```
 Go to Amazon and search for 'laptop'
 Visit eBay and search for 'vintage cameras'
 ```
 
-✅ **Navigation Tasks**
+✔ **Navigation Tasks**
 ```
 Go to GitHub and search for 'web scraping'
 Visit Stack Overflow and search for 'Python async'
 ```
 
-❌ **Avoid These**
+✗ **Avoid These**
 ```
-❌ Tasks requiring CAPTCHA solving
-❌ Tasks requiring payment/checkout
-❌ Tasks with complex multi-step verification
+✗ Tasks requiring CAPTCHA solving
+✗ Tasks requiring payment/checkout
+✗ Tasks with complex multi-step verification
 ```
 
----
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 browser-use/
@@ -117,8 +110,8 @@ browser-use/
 ├── streamlit_app.py        # Web interface
 ├── requirements.txt        # Python dependencies
 ├── .env                    # Credentials (create this)
-├── README.md              # This file
-└── dataset/               # Generated task results
+├── README.md               # This file
+└── dataset/                # Generated task results
     └── {task-slug}/
         └── {timestamp}/
             ├── run.gif            # Full recording
@@ -129,9 +122,9 @@ browser-use/
                 └── duplicates/    # Filtered frames
 ```
 
----
 
-## 🔧 Configuration Options
+
+## Configuration Options
 
 ### app.py Settings
 
@@ -155,9 +148,8 @@ Accessible via sidebar in the web interface:
 - **Max Steps**: Adjust maximum agent steps (5-50)
 - **Show Duplicates**: Toggle duplicate frame visibility
 
----
 
-## 🛠️ Advanced Usage
+## Advanced Usage
 
 ### Custom Task Execution
 
@@ -169,15 +161,6 @@ from app import run_task
 asyncio.run(run_task("Your task here", dataset_root=Path("custom_output")))
 ```
 
-### Disable GPT Filtering
-
-Comment out the filtering section in `app.py`:
-
-```python
-# decision = gpt_filter_screenshots(sanitize_task_text(task), all_frames)
-decision = {"keep": all_frames, "skip": []}
-```
-
 ### Adjust Viewport Size
 
 Modify in `app.py`:
@@ -186,17 +169,7 @@ Modify in `app.py`:
 await set_viewport(agent, width=1920, height=1080)
 ```
 
----
-
-## 🐛 Troubleshooting
-
-### Issue: GPT Filtering Fails
-
-**Solution**: Check your OpenAI API key and billing status
-```bash
-# Test API key
-python -c "from openai import OpenAI; print(OpenAI().models.list())"
-```
+## Troubleshooting
 
 ### Issue: Browser Won't Launch
 
@@ -225,9 +198,8 @@ cat .env
 # Wrong:   OPENAI_API_KEY = "sk-xxxxx"
 ```
 
----
 
-## 📊 System Requirements
+## System Requirements
 
 - **Python**: 3.8 or higher
 - **RAM**: 4GB minimum, 8GB recommended
@@ -235,73 +207,15 @@ cat .env
 - **OS**: Windows, macOS, or Linux
 - **Browser**: Chrome/Chromium (automatically managed)
 
----
+##  Security & Privacy
 
-## 🔐 Security & Privacy
+- All processing runs **locally** on your machine
+- Credentials stored in **local .env** file (not version controlled)
+- Screenshots stored **locally** in `dataset/` folder
+- Keep your `.env` file **secure** and never commit it
 
-- ✅ All processing runs **locally** on your machine
-- ✅ Credentials stored in **local .env** file (not version controlled)
-- ✅ Sensitive data **redacted** before sending to OpenAI
-- ✅ Screenshots stored **locally** in `dataset/` folder
-- ⚠️ OpenAI API calls include **redacted screenshots** for filtering
-- ⚠️ Keep your `.env` file **secure** and never commit it
 
----
-
-## 🤝 Contributing
-
-Contributions welcome! Please follow these guidelines:
-
-1. **Code Style**: Follow PEP 8 with production-level comments
-2. **Testing**: Test all changes thoroughly
-3. **Documentation**: Update README for new features
-4. **Security**: Never commit credentials or API keys
-
----
-
-## 📝 API Usage Costs
-
-**OpenAI API Usage:**
-- GPT-4o-mini Vision: ~$0.01-0.05 per task (15 images max)
-- Filtering is **optional** and can be disabled
-
-**Estimated Monthly Costs:**
-- Light usage (10 tasks/day): ~$5-10/month
-- Moderate usage (50 tasks/day): ~$25-50/month
-
----
-
-## 🎓 Learning Resources
-
-- [browser-use Documentation](https://github.com/browser-use/browser-use)
-- [OpenAI API Reference](https://platform.openai.com/docs/api-reference)
-- [Streamlit Documentation](https://docs.streamlit.io/)
-- [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/)
-
----
-
-## 📜 License
-
-This project is provided as-is for educational and research purposes.
-
----
-
-## 🆘 Support
-
-**Common Issues:**
-- Check the Troubleshooting section above
-- Verify all dependencies are installed
-- Ensure .env file is properly configured
-- Check OpenAI API billing and limits
-
-**Still need help?**
-- Check existing GitHub issues
-- Review the example tasks
-- Verify your environment setup
-
----
-
-## 🎉 Quick Test
+## Quick Test
 
 Run this simple test to verify everything works:
 
@@ -316,13 +230,7 @@ python app.py "Go to example.com"
 streamlit run streamlit_app.py
 ```
 
----
 
-**Version**: 1.0.0  
-**Last Updated**: November 2025  
-**Status**: ✅ Production Ready
+Enjoy using Agent B! ✨
 
----
-
-Happy Automating! 🚀
 
