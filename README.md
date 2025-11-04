@@ -4,7 +4,7 @@
 Features:
 
 - **AI Agent**: Autonomous web browsing using natural language instructions
-- **Smart Screenshots**: Automatic capture with duplicate filtering
+- **Smart Screenshots**: Automatic capture with smart filtering
 - **GIF Recording**: Full session recordings for visual debugging
 - **Web Interface**: Streamlit UI for task management
 - **Task History**: Complete history with screenshot galleries
@@ -232,6 +232,7 @@ streamlit run streamlit_app.py
 
 
 Enjoy using Agent B! ✨
+
 
 
 
