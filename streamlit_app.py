@@ -9,22 +9,15 @@ import os
 import platform
 import numpy as np
 
-# ============================================
-# Windows Asyncio Fix
-# ============================================
-# Fix for Windows: Set proper event loop policy for subprocess support
+
 if platform.system() == 'Windows':
-    # Use ProactorEventLoop on Windows to support subprocesses
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
-# Add parent directory to path to import app module
 sys.path.insert(0, str(Path(__file__).parent))
 
 from app import run_task, ensure_dir
 
-# ============================================
-# Page Configuration
-# ============================================
+# Page
 st.set_page_config(
     page_title="Browser Automation Agent",
     page_icon="🤖",
@@ -32,9 +25,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ============================================
-# Custom CSS Styling
-# ============================================
+# Styling
 st.markdown("""
 <style>
     .main-header {
@@ -79,9 +70,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================
 # Helper Functions
-# ============================================
 
 def get_all_task_runs(dataset_root: Path = Path("dataset")):
     """
@@ -100,7 +89,7 @@ def get_all_task_runs(dataset_root: Path = Path("dataset")):
                 if run_dir.is_dir() and (run_dir / "summary.json").exists():
                     runs.append((task_dir.name, run_dir.name, run_dir))
     
-    # Sort by timestamp (newest first)
+    # Sort by timestamp
     runs.sort(key=lambda x: x[1], reverse=True)
     return runs
 
@@ -124,24 +113,16 @@ def load_run_summary(run_dir: Path):
     return None
 
 
-
-
-# ============================================
 # Main Application
-# ============================================
-
 def main():
     """Main Streamlit application entry point."""
     
     # Header
-    st.markdown('<div class="main-header">🤖 Browser Automation Agent</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"> Agent B </div>', unsafe_allow_html=True)
     st.markdown("---")
     
-    # ============================================
-    # Sidebar - Configuration & Examples
-    # ============================================
+    # Sidebar
     with st.sidebar:
-        # Load environment variables
         from dotenv import load_dotenv
         load_dotenv()
         
@@ -149,16 +130,14 @@ def main():
         password = os.getenv("GMAIL_PASS")
         
         # Example tasks
-        st.header("📝 Example Tasks")
+        st.header("Example Tasks")
         
         if email and password:
             example_tasks = [
                 "Search for 'Python tutorials' on Google",
                 "Go to Amazon and search for 'laptop'",
                 "Open YouTube and search for 'AI tutorials'",
-                "Login to Gmail and check unread emails",
-                "Go to GitHub, login, and search for 'browser automation'",
-                "Visit Wikipedia and search for 'Machine Learning'",
+                "Go to Wikipedia and search for 'Machine Learning'",
             ]
         else:
             example_tasks = [
@@ -166,7 +145,6 @@ def main():
                 "Go to Amazon and search for 'laptop'",
                 "Open YouTube and search for 'AI tutorials'",
                 "Visit Wikipedia and search for 'Machine Learning'",
-                "Go to GitHub and search for 'browser automation'",
             ]
         
         selected_example = st.selectbox(
@@ -175,7 +153,7 @@ def main():
             index=0
         )
         
-        if st.button("📋 Use Example"):
+        if st.button("Use Example"):
             if selected_example:
                 st.session_state.task_input = selected_example
                 st.rerun()
@@ -183,19 +161,13 @@ def main():
         st.markdown("---")
         
         # Settings
-        st.header("🔧 Settings")
+        st.header("Settings")
         max_steps = st.slider("Max Steps", min_value=5, max_value=50, value=30)
     
-    # ============================================
-    # Main Content - Task Input & Execution
-    # ============================================
-    
     # Create tabs
-    tab1, tab2 = st.tabs(["🚀 Run Task", "📊 Task History"])
+    tab1, tab2 = st.tabs(["Run Task", "Task History"])
     
-    # ============================================
-    # Tab 1: Run Task
-    # ============================================
+    # Run
     with tab1:
         st.header("Run Browser Automation Task")
         
@@ -209,10 +181,10 @@ def main():
         
         col1, col2 = st.columns([1, 4])
         with col1:
-            run_button = st.button("▶️ Run Task", type="primary", use_container_width=True)
+            run_button = st.button("Run Task", type="primary", use_container_width=True)
         with col2:
             if run_button and not task_input.strip():
-                st.warning("⚠️ Please enter a task first!")
+                st.warning("Please enter a task first!")
         
         # Execute task
         if run_button and task_input.strip():
@@ -226,13 +198,12 @@ def main():
             try:
                 # Update progress
                 progress_bar.progress(10)
-                status_text.text("🔄 Initializing browser agent...")
+                status_text.text("Initializing browser agent...")
                 
                 # Run the task
                 progress_bar.progress(30)
-                status_text.text("🤖 Agent executing task...")
+                status_text.text("Agent executing task...")
                 
-                # Run async task - create new event loop to avoid issues
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 try:
@@ -241,9 +212,9 @@ def main():
                     loop.close()
                 
                 progress_bar.progress(100)
-                status_text.text("✅ Task completed!")
+                status_text.text("Task completed!")
                 
-                st.markdown('<div class="status-box success-box">✅ Task completed successfully!</div>', 
+                st.markdown('<div class="status-box success-box">Task completed successfully!</div>',
                            unsafe_allow_html=True)
                 st.success("Results are now available in the 'Task History' tab.")
                 
@@ -252,9 +223,9 @@ def main():
                 
             except NotImplementedError as e:
                 progress_bar.progress(100)
-                status_text.text("❌ Windows Subprocess Error")
+                status_text.text("Windows Subprocess Error")
                 st.markdown(
-                    '<div class="status-box error-box">❌ Windows Asyncio Error: Browser subprocess failed to start</div>', 
+                    '<div class="status-box error-box">Windows Asyncio Error: Browser subprocess failed to start</div>',
                     unsafe_allow_html=True
                 )
                 st.error(
@@ -269,10 +240,10 @@ def main():
                     
             except Exception as e:
                 progress_bar.progress(100)
-                status_text.text("❌ Task failed")
+                status_text.text("Task failed")
                 error_msg = str(e) if str(e) else "Unknown error occurred"
                 st.markdown(
-                    f'<div class="status-box error-box">❌ Error: {error_msg}</div>', 
+                    f'<div class="status-box error-box">Error: {error_msg}</div>',
                     unsafe_allow_html=True
                 )
                 st.error(f"**Error Type:** {type(e).__name__}")
@@ -294,9 +265,8 @@ def main():
                     """)
                     st.code(f"Full error: {type(e).__name__}: {error_msg}", language="python")
     
-    # ============================================
-    # Tab 2: Task History
-    # ============================================
+    #Task History
+
     with tab2:
         st.header("Task Execution History")
         
@@ -304,13 +274,13 @@ def main():
         runs = get_all_task_runs()
         
         if not runs:
-            st.info("📭 No task runs found. Execute a task in the 'Run Task' tab to see results here.")
+            st.info("No task runs found. Execute a task in the 'Run Task' tab to see results here.")
         else:
             st.success(f"📁 Found {len(runs)} task run(s)")
             
             # Display runs
             for idx, (task_slug, timestamp, run_dir) in enumerate(runs):
-                with st.expander(f"🔹 {task_slug} - {timestamp}", expanded=(idx == 0)):
+                with st.expander(f"{task_slug} - {timestamp}", expanded=(idx == 0)):
                     # Load summary
                     summary = load_run_summary(run_dir)
                     
@@ -319,7 +289,7 @@ def main():
                         col1, col2, col3, col4 = st.columns(4)
                         
                         with col1:
-                            st.metric("Status", "✅ Success" if summary.get("success") else "❌ Failed")
+                            st.metric("Status", "Success" if summary.get("success") else "Failed")
                         with col2:
                             st.metric("Steps", summary.get("steps", 0))
                         with col3:
@@ -341,7 +311,7 @@ def main():
                         st.markdown("---")
                         
                         # Display step-by-step execution with screenshots and actions
-                        st.markdown("### 📸 Step-by-Step Execution")
+                        st.markdown("### Step-by-Step Execution")
                         
                         # Load detailed steps information
                         steps_file = run_dir / "steps_details.json"
@@ -389,7 +359,7 @@ def main():
                                 
                                 filtered_steps.append(step_data)
                             
-                            st.info(f"🎬 Total Steps: {len(filtered_steps)}")
+                            st.info(f"Total Steps: {len(filtered_steps)}")
                             
                             for step_data in filtered_steps:
                                 step_num = step_data.get("step_number", 0)
@@ -400,7 +370,7 @@ def main():
                                 screenshot_name = step_data.get("screenshot", "")
                                 action_description = step_data.get("action_description", "")
                                 
-                                # Create expandable section for each step
+                                # Create expandable section
                                 with st.expander(f"**Step {step_num}: {action_type}**", expanded=(step_num <= 3)):
                                     col1, col2 = st.columns([2, 3])
                                     
@@ -411,20 +381,20 @@ def main():
                                             try:
                                                 img = Image.open(screenshot_path)
                                                 
-                                                # Check if image is mostly blank/white (transitional frame)
-                                                img_array = np.array(img.convert('L'))  # Convert to grayscale
+                                                # Check if image is mostly blank/white
+                                                img_array = np.array(img.convert('L'))
+                                                # Convert to grayscale
                                                 mean_brightness = img_array.mean()
                                                 
                                                 # Display image
                                                 st.image(img, use_container_width=True)
                                                 
-                                                # Add label for blank/loading screens
                                                 if mean_brightness > 250:
-                                                    st.caption("⚪ Blank/Loading Screen")
+                                                    st.caption("Blank/Loading Screen")
                                                 elif mean_brightness < 10:
-                                                    st.caption("⚫ Black/Transitional Screen")
+                                                    st.caption("Black/Transitional Screen")
                                                 elif url and 'about:blank' in url:
-                                                    st.caption("📄 Empty Tab (Initial State)")
+                                                    st.caption("Empty Tab (Initial State)")
                                                     
                                             except Exception as e:
                                                 st.error(f"Could not load screenshot: {e}")
@@ -433,50 +403,47 @@ def main():
                                     
                                     with col2:
                                         # Display action details
-                                        st.markdown(f"**🎯 Action:** `{action_type}`")
+                                        st.markdown(f"**Action:** `{action_type}`")
                                         
                                         if action_description and action_description != action_type:
-                                            st.markdown(f"**📝 Details:** {action_description}")
+                                            st.markdown(f"**Details:** {action_description}")
                                         
-                                        # Show interacted element
                                         interacted_element = step_data.get("interacted_element", "")
                                         if interacted_element and interacted_element != "None":
-                                            st.markdown(f"**🖱️ Clicked Element:** `{interacted_element}`")
+                                            st.markdown(f"**Clicked Element:** `{interacted_element}`")
                                         
                                         if url and url != "None":
-                                            st.markdown(f"**🌐 URL:** `{url}`")
+                                            st.markdown(f"**URL:** `{url}`")
                                         
-                                        # Show page title
+                                        # Show title
                                         title = step_data.get("title", "")
                                         if title and title != "None":
-                                            st.markdown(f"**📄 Page:** {title}")
+                                            st.markdown(f"**Page:** {title}")
                                         
-                                        # Show extracted content if any
                                         extracted_content = step_data.get("extracted_content", "")
                                         if extracted_content and extracted_content != "None":
-                                            st.markdown(f"**📋 Extracted Data:**")
+                                            st.markdown(f"**Extracted Data:**")
                                             st.text_area("", extracted_content, height=80, key=f"extracted_{step_num}_{timestamp}", disabled=True)
                                         
-                                        # Show error if any
                                         error = step_data.get("error", "")
                                         if error and error != "None":
-                                            st.error(f"⚠️ Error: {error}")
+                                            st.error(f"Error: {error}")
                                         
                                         # Agent reasoning
                                         if thought and thought.strip() and thought != "None":
-                                            with st.expander("💭 Agent Reasoning"):
+                                            with st.expander("Agent Reasoning"):
                                                 st.text_area("", thought, height=150, key=f"thought_{step_num}_{timestamp}", disabled=True)
                                         
                                         # Technical details
                                         if action_details and action_details != "No action" and action_details != "None":
-                                            with st.expander("🔍 Technical Details"):
+                                            with st.expander("Technical Details"):
                                                 st.code(action_details, language="json")
                                     
                                     st.markdown("---")
                         
-                        # Fallback: Show all frames if no step details available
+                        # Fallback
                         elif all_frames:
-                            st.warning("⚠️ Detailed step information not available. Showing all screenshots:")
+                            st.warning("Detailed step information not available. Showing all screenshots:")
                             
                             cols_per_row = 2
                             frame_list = sorted(all_frames.items())
@@ -494,10 +461,7 @@ def main():
                         st.error("Failed to load summary data")
 
 
-# ============================================
-# Application Entry Point
-# ============================================
-
+#Main
 if __name__ == "__main__":
     # Initialize session state
     if 'task_input' not in st.session_state:
