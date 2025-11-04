@@ -19,21 +19,12 @@ APP_PASSWORD = os.getenv("GMAIL_PASS")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def is_blank_frame(frame: Image.Image, threshold: float = 15.0) -> bool:
-    """
-    Detect if a frame is mostly blank.
-    
-    Args:
-        frame: PIL Image
-        threshold: stddev threshold; smaller means stricter blank detection
-    Returns:
-        True if frame is blank
-    """
-    gray = frame.convert("L")  # Convert to grayscale
+    """Detect if a frame is mostly blank."""
+    gray = frame.convert("L")
     stat = ImageStat.Stat(gray)
     return stat.stddev[0] < threshold
 
-# util
-
+# utils
 def slugify(text: str) -> str:
     text = text.strip().lower()
     text = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
@@ -53,7 +44,6 @@ def sha256(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8", errors="ignore")).hexdigest()
 
 # CDP helpers
-
 async def cdp(agent: Agent):
     s = await agent.browser_session.get_or_create_cdp_session()
     return s.cdp_client, s.session_id
@@ -85,13 +75,6 @@ async def set_viewport(agent: Agent, width: int = 1366, height: int = 768, scale
 async def run_task(task: str, dataset_root: Path = Path("dataset")):
     """
     Execute a browser automation task with AI agent.
-    
-    Args:
-        task: Natural language task description
-        dataset_root: Root directory to save results
-        
-    Returns:
-        None - Results saved to filesystem
     """
     enhanced_task = f"""
     TASK: {task}
@@ -118,7 +101,7 @@ async def run_task(task: str, dataset_root: Path = Path("dataset")):
     - If navigation fails, retry with slightly different approaches
     - Document any persistent errors in your final response
     """
-    
+
     # login credentials
     if EMAIL and APP_PASSWORD:
         enhanced_task += f"""
@@ -126,32 +109,24 @@ AUTHENTICATION CREDENTIALS (Use ONLY if login is required):
 - Email/Username: {EMAIL}
 - Password: {APP_PASSWORD}
 - Login automatically when you encounter login pages or forms
-- Complete the full authentication flow including any 2FA or verification steps
+- Complete the full authentication flow including any 2FA or verification steps"""
 
-OTP/2FA HANDLING (For OTP-based login):
-- If the website requires OTP/verification code after entering credentials:
-  1. Open a new tab and navigate to https://mail.google.com
-  2. Login to Gmail using the same credentials: {EMAIL} / {APP_PASSWORD}
-  3. Check the inbox for the most recent email with OTP/verification code
-  4. Extract the OTP code from the email (look for the unique code - dont open verification links, just copy the code)
-  5. Switch back to the original tab
-  6. Enter the extracted OTP code in the verification field
-  7. Complete the login process
-- Be patient and wait for emails to arrive (check inbox multiple times if needed)
-- Look for emails from the service you're trying to login to
-"""
+#OTP/2FA HANDLING (not working because of bot detection):
+#- If the website requires OTP/verification code after entering credentials:
+#  1. Open a new tab and navigate to https://mail.google.com
+#  2. Login using: {EMAIL} / {APP_PASSWORD}
+#  3. Check inbox for OTP/verification email
+#  4. Extract the code and use it to complete login
+
     else:
         enhanced_task += """
 NOTE: No login credentials available. Skip any tasks requiring authentication.
 """
-    
+
     task_slug = slugify(task)
     run_dir = dataset_root / task_slug / now_ts()
     ensure_dir(run_dir)
-    browser = Browser(
-        use_cloud=False,
-        headless=False,
-    )
+    browser = Browser(use_cloud=False, headless=False)
     llm = ChatBrowserUse()
 
     agent = Agent(
@@ -165,10 +140,8 @@ NOTE: No login credentials available. Skip any tasks requiring authentication.
         retry_delay=2,
         step_timeout=180,
     )
-    
-    print(f"Agent configured with enhanced instructions for better task execution")
 
-    # Running the agent
+    print("Agent configured with enhanced instructions.")
     await asyncio.sleep(0.2)
     try:
         await set_viewport(agent, width=1366, height=768)
@@ -177,11 +150,10 @@ NOTE: No login credentials available. Skip any tasks requiring authentication.
 
     history = await agent.run(max_steps=30)
 
-    # Extract GIF frames as screenshots
+    # Extract GIF frames
     gif_path = run_dir / "run.gif"
     frames_dir = run_dir / "frames"
     ensure_dir(frames_dir)
-
     if gif_path.exists():
         print(f"Extracting frames from GIF: {gif_path}")
         gif = Image.open(gif_path)
@@ -189,20 +161,16 @@ NOTE: No login credentials available. Skip any tasks requiring authentication.
         for i, frame in enumerate(ImageSequence.Iterator(gif)):
             frame = frame.convert("RGB")
             if is_blank_frame(frame):
-                print(f"Skipping blank frame {i}")
                 continue
             frame_path = frames_dir / f"frame_{kept_frames:03d}.png"
             frame.save(frame_path)
             kept_frames += 1
-        print(f"Extracted {kept_frames} non-blank frames to {frames_dir}")
+        print(f"Extracted {kept_frames} non-blank frames.")
 
-    # Processing history
     steps_data = []
-    
-    # Extract detailed steps
     print(f"📋 Processing {history.number_of_steps()} steps...")
     history_items = history.history if isinstance(history.history, list) else []
-    
+
     for step_idx, history_item in enumerate(history_items):
         step_info = {
             "step_number": step_idx + 1,
@@ -212,63 +180,40 @@ NOTE: No login credentials available. Skip any tasks requiring authentication.
             "action_details": "",
             "screenshot": f"frame_{step_idx:03d}.png",
             "interacted_element": "",
-            "action_description": ""
+            "action_description": "",
         }
-        
+
         try:
-            # Extracting browser state
             if hasattr(history_item, 'state') and history_item.state:
                 state = history_item.state
                 step_info['url'] = getattr(state, 'url', '')
                 step_info['title'] = getattr(state, 'title', '')
-                
-                # Getting interacted element
                 if hasattr(state, 'interacted_element') and state.interacted_element:
                     interacted = state.interacted_element[0] if isinstance(state.interacted_element, list) else state.interacted_element
                     if interacted:
                         step_info['interacted_element'] = str(interacted)
-            
-            # Extracting model output
+
             if hasattr(history_item, 'model_output') and history_item.model_output:
                 model_output = history_item.model_output
-                
-                # Extracting current state
                 if hasattr(model_output, 'current_state') and model_output.current_state:
                     current_state = model_output.current_state
-                    
-                    # Getting evaluation and next goal
                     evaluation = getattr(current_state, 'evaluation_previous_goal', '')
                     memory = getattr(current_state, 'memory', '')
                     next_goal = getattr(current_state, 'next_goal', '')
-                    
-                    # Combining into thought
                     thought_parts = []
-                    if evaluation:
-                        thought_parts.append(f"Evaluation: {evaluation}")
-                    if memory:
-                        thought_parts.append(f"Memory: {memory}")
-                    if next_goal:
-                        thought_parts.append(f"Next Goal: {next_goal}")
-                    
+                    if evaluation: thought_parts.append(f"Evaluation: {evaluation}")
+                    if memory: thought_parts.append(f"Memory: {memory}")
+                    if next_goal: thought_parts.append(f"Next Goal: {next_goal}")
                     step_info['thought'] = "\n\n".join(thought_parts)
-                
-                # Extract actions
+
                 if hasattr(model_output, 'action') and model_output.action:
                     actions = model_output.action
-                    
-                    # Get first action
                     if actions and len(actions) > 0:
                         first_action = actions[0]
-                        
-                        # Get action name
                         action_class_name = first_action.__class__.__name__ if hasattr(first_action, '__class__') else 'Unknown'
-                        
-                        # Get action details
                         if hasattr(first_action, 'model_dump'):
                             action_dict = first_action.model_dump(exclude_none=True)
                             step_info['action_details'] = json.dumps(action_dict, indent=2)
-                            
-                            # Map action class to readable names and extract parameters
                             if 'text' in action_dict:
                                 step_info['action_type'] = 'Input Text'
                                 step_info['action_description'] = f"Type: '{action_dict.get('text', '')[:100]}'"
@@ -288,21 +233,10 @@ NOTE: No login credentials available. Skip any tasks requiring authentication.
                             elif 'scroll' in action_class_name.lower():
                                 step_info['action_type'] = 'Scroll'
                                 step_info['action_description'] = f"Scroll: {action_dict.get('direction', 'down')}"
-                            elif 'wait' in action_class_name.lower():
-                                step_info['action_type'] = 'Wait'
-                                step_info['action_description'] = f"Wait {action_dict.get('seconds', 1)}s"
-                            elif 'done' in action_class_name.lower():
-                                step_info['action_type'] = 'Task Complete'
-                                step_info['action_description'] = 'Task completed successfully'
-                            else:
-                                # Use class name as fallback
-                                step_info['action_type'] = action_class_name.replace('Action', '').replace('Model', '').strip()
-                                if not step_info['action_type']:
-                                    step_info['action_type'] = 'Browser Action'
+
                         else:
-                            step_info['action_type'] = action_class_name.replace('Action', '').replace('Model', '').strip() or 'Browser Action'
-            
-            # Extract result
+                            step_info['action_type'] = action_class_name.replace('Action', '').strip() or 'Browser Action'
+
             if hasattr(history_item, 'result') and history_item.result:
                 results = history_item.result
                 if results and len(results) > 0:
@@ -311,39 +245,51 @@ NOTE: No login credentials available. Skip any tasks requiring authentication.
                         step_info['extracted_content'] = str(result.extracted_content)[:200]
                     if hasattr(result, 'error') and result.error:
                         step_info['error'] = str(result.error)
-                        
+
         except Exception as e:
             print(f"Could not extract full details for step {step_idx + 1}: {e}")
-            import traceback
-            traceback.print_exc()
-        
-        steps_data.append(step_info)
-        action_display = f"{step_info['action_type']}"
-        if step_info.get('action_description'):
-            action_display += f" - {step_info['action_description']}"
-        print(f"   Step {step_idx + 1}: {action_display}")
-    
-    # Save steps
-    (run_dir / "steps_details.json").write_text(
-        json.dumps(steps_data, indent=2, ensure_ascii=False), 
-        encoding="utf-8"
-    )
-    print(f"Saved {len(steps_data)} step details")
 
-    # Save summary
+        steps_data.append(step_info)
+
+    # Filter visible steps for consistent counts
+    visible_steps = []
+    for s in steps_data:
+        desc = (s.get("action_description") or "").lower()
+        act_type = (s.get("action_type") or "").lower()
+        if "wait" in act_type or "waited" in desc:
+            continue
+        if s.get("step_number") == 1:
+            continue
+        visible_steps.append(s)
+
+    for s in visible_steps:
+        if s.get("action_type", "").lower() == "unknown" or not s.get("action_type"):
+            if s.get("action_description"):
+                s["action_type"] = "Action"
+            else:
+                s["action_type"] = "Action"
+
+    # Save step details
+    (run_dir / "steps_details.json").write_text(
+        json.dumps(visible_steps, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    print(f"Saved {len(visible_steps)} visible step details")
+
+    # Simplified summary
     summary = {
         "task": task,
         "success": bool(history.is_successful()),
-        "steps": history.number_of_steps(),
+        "steps": len(visible_steps),  # visible count only
         "urls": history.urls(),
         "errors": history.errors(),
         "gif": str(gif_path),
-        "total_frames": len(list(frames_dir.glob("*.png"))),
-        "steps_with_actions": steps_data
+        "total_frames": len(list(frames_dir.glob('*.png'))),
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
     print(f"\nSaved run to: {run_dir.resolve()}\n")
+
 
 # Main
 if __name__ == "__main__":
@@ -352,7 +298,7 @@ if __name__ == "__main__":
         task = " ".join(sys.argv[1:])
     else:
         task = input("Enter your task: ")
-    print(f"\n🎯 Task: {task}")
+    print(f"\nTask: {task}")
     if EMAIL and APP_PASSWORD:
         print(f"Credentials loaded: {EMAIL}")
     else:
