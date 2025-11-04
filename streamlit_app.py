@@ -19,8 +19,8 @@ from app import run_task, ensure_dir
 
 # Page
 st.set_page_config(
-    page_title="Browser Automation Agent",
-    page_icon="🤖",
+    page_title="Agent B",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
