@@ -115,7 +115,6 @@ def load_run_summary(run_dir: Path):
 
 # Main Application
 def main():
-    """Main Streamlit application entry point."""
     
     # Header
     st.markdown('<div class="main-header"> Agent B </div>', unsafe_allow_html=True)
@@ -169,14 +168,14 @@ def main():
     
     # Run
     with tab1:
-        st.header("Run Browser Automation Task")
+        st.header("Watch your tasks come alive!")
         
         # Task input
         task_input = st.text_area(
             "Enter your task:",
             value=st.session_state.get('task_input', ''),
             height=100,
-            placeholder="Example: Go to Google and search for 'browser automation'"
+            placeholder="Example: Go to Google and search for 'Softlight'"
         )
         
         col1, col2 = st.columns([1, 4])
@@ -188,7 +187,7 @@ def main():
         
         # Execute task
         if run_button and task_input.strip():
-            st.markdown('<div class="status-box info-box">⏳ Task execution in progress...</div>', 
+            st.markdown('<div class="status-box info-box">⏳ Task execution in progress...</div>',
                        unsafe_allow_html=True)
             
             # Progress indicators
@@ -265,8 +264,6 @@ def main():
                     """)
                     st.code(f"Full error: {type(e).__name__}: {error_msg}", language="python")
     
-    #Task History
-
     with tab2:
         st.header("Task Execution History")
         
@@ -276,7 +273,7 @@ def main():
         if not runs:
             st.info("No task runs found. Execute a task in the 'Run Task' tab to see results here.")
         else:
-            st.success(f"📁 Found {len(runs)} task run(s)")
+            st.success(f"Found {len(runs)} task run(s)")
             
             # Display runs
             for idx, (task_slug, timestamp, run_dir) in enumerate(runs):
@@ -284,6 +281,9 @@ def main():
                     # Load summary
                     summary = load_run_summary(run_dir)
                     
+                    # Initialize filtered_steps
+                    filtered_steps = []
+
                     if summary:
                         # Display summary metrics
                         col1, col2, col3, col4 = st.columns(4)
@@ -291,11 +291,8 @@ def main():
                         with col1:
                             st.metric("Status", "Success" if summary.get("success") else "Failed")
                         with col2:
-                            st.metric("Steps", summary.get("steps", 0))
-                        with col3:
-                            st.metric("URLs Visited", len(summary.get("urls", [])))
-                        with col4:
-                            st.metric("Errors", len(summary.get("errors", [])))
+                            # Show number of filtered steps (safe now)
+                            st.metric("Steps", len(filtered_steps))
                         
                         # Display task details
                         st.markdown("**Task:**")
@@ -310,7 +307,7 @@ def main():
                         
                         st.markdown("---")
                         
-                        # Display step-by-step execution with screenshots and actions
+                        # Display execution with screenshots and actions
                         st.markdown("### Step-by-Step Execution")
                         
                         # Load detailed steps information
@@ -334,114 +331,129 @@ def main():
                             for frame_path in sorted(frames_dir.glob("*.png")):
                                 all_frames[frame_path.name] = frame_path
                         
-                        # Display each step with its screenshot and action details
-                        if steps_with_actions and all_frames:
-                            # Filter out unwanted steps:
-                            # 1. Remove step 1 (initial state)
-                            # 2. Remove steps with "Waited" in extracted data or action description
+                        # Filter and renumber steps
+                        if steps_with_actions:
                             filtered_steps = []
                             for step_data in steps_with_actions:
                                 step_num = step_data.get("step_number", 0)
                                 
-                                # Skip step 1
+                                # Skip step 1 (initial state)
                                 if step_num == 1:
                                     continue
                                 
-                                # Skip steps with "Waited" messages
+                                # Skip steps with "Waited" messages or wait actions
                                 extracted_content = step_data.get("extracted_content", "")
                                 action_description = step_data.get("action_description", "")
                                 action_details = step_data.get("action_details", "")
                                 
-                                if (("waited" in str(extracted_content).lower()) or 
+                                if (("waited" in str(extracted_content).lower()) or
                                     ("waited" in str(action_description).lower()) or
                                     ("wait" in step_data.get("action_type", "").lower() and "wait" in str(action_details).lower())):
                                     continue
                                 
                                 filtered_steps.append(step_data)
                             
-                            st.info(f"Total Steps: {len(filtered_steps)}")
+                            # Renumber filtered steps for display
+                            for display_index, sd in enumerate(filtered_steps, start=1):
+                                sd["display_step_number"] = display_index
                             
-                            for step_data in filtered_steps:
-                                step_num = step_data.get("step_number", 0)
-                                action_type = step_data.get("action_type", "Unknown action")
-                                thought = step_data.get("thought", "")
-                                url = step_data.get("url", "")
-                                action_details = step_data.get("action_details", "")
-                                screenshot_name = step_data.get("screenshot", "")
-                                action_description = step_data.get("action_description", "")
-                                
-                                # Create expandable section
-                                with st.expander(f"**Step {step_num}: {action_type}**", expanded=(step_num <= 3)):
-                                    col1, col2 = st.columns([2, 3])
+                            displayed_count = len(filtered_steps)
+                            st.info(f"Steps: {displayed_count}")
+                            
+                            # Display filtered steps with screenshots and details
+                            if filtered_steps and all_frames:
+                                for sd in filtered_steps:
+                                    original_step_num = sd.get("step_number", 0)
+                                    display_step_num = sd.get("display_step_number", original_step_num)
+                                    action_type = sd.get("action_type", "Unknown action")
+                                    thought = sd.get("thought", "")
+                                    url = sd.get("url", "")
+                                    action_details = sd.get("action_details", "")
+                                    screenshot_name = sd.get("screenshot", "")
+                                    action_description = sd.get("action_description", "")
                                     
-                                    with col1:
-                                        # Display screenshot
-                                        if screenshot_name in all_frames:
-                                            screenshot_path = all_frames[screenshot_name]
-                                            try:
-                                                img = Image.open(screenshot_path)
-                                                
-                                                # Check if image is mostly blank/white
-                                                img_array = np.array(img.convert('L'))
-                                                # Convert to grayscale
-                                                mean_brightness = img_array.mean()
-                                                
-                                                # Display image
-                                                st.image(img, use_container_width=True)
-                                                
-                                                if mean_brightness > 250:
-                                                    st.caption("Blank/Loading Screen")
-                                                elif mean_brightness < 10:
-                                                    st.caption("Black/Transitional Screen")
-                                                elif url and 'about:blank' in url:
-                                                    st.caption("Empty Tab (Initial State)")
+                                    # Create expandable section 
+                                    with st.expander(f"Step {display_step_num}: {action_type}", expanded=(display_step_num <= 3)):
+                                        col1, col2 = st.columns([2, 3])
+                                        
+                                        with col1:
+                                            # Display screenshot
+                                            if screenshot_name in all_frames:
+                                                screenshot_path = all_frames[screenshot_name]
+                                                try:
+                                                    img = Image.open(screenshot_path)
                                                     
-                                            except Exception as e:
-                                                st.error(f"Could not load screenshot: {e}")
-                                        else:
-                                            st.warning("Screenshot not available")
-                                    
-                                    with col2:
-                                        # Display action details
-                                        st.markdown(f"**Action:** `{action_type}`")
+                                                    # Check if image is mostly blank/white
+                                                    img_array = np.array(img.convert('L'))
+                                                    mean_brightness = img_array.mean()
+                                                    
+                                                    # Display image
+                                                    st.image(img, use_container_width=True)
+                                                    
+                                                    if mean_brightness > 250:
+                                                        st.caption("Blank/Loading Screen")
+                                                    elif mean_brightness < 10:
+                                                        st.caption("Black/Transitional Screen")
+                                                    elif url and 'about:blank' in url:
+                                                        st.caption("Empty Tab (Initial State)")
+                                                        
+                                                except Exception as e:
+                                                    st.error(f"Could not load screenshot: {e}")
+                                            else:
+                                                st.warning("Screenshot not available")
                                         
-                                        if action_description and action_description != action_type:
-                                            st.markdown(f"**Details:** {action_description}")
-                                        
-                                        interacted_element = step_data.get("interacted_element", "")
-                                        if interacted_element and interacted_element != "None":
-                                            st.markdown(f"**Clicked Element:** `{interacted_element}`")
-                                        
-                                        if url and url != "None":
-                                            st.markdown(f"**URL:** `{url}`")
-                                        
-                                        # Show title
-                                        title = step_data.get("title", "")
-                                        if title and title != "None":
-                                            st.markdown(f"**Page:** {title}")
-                                        
-                                        extracted_content = step_data.get("extracted_content", "")
-                                        if extracted_content and extracted_content != "None":
-                                            st.markdown(f"**Extracted Data:**")
-                                            st.text_area("", extracted_content, height=80, key=f"extracted_{step_num}_{timestamp}", disabled=True)
-                                        
-                                        error = step_data.get("error", "")
-                                        if error and error != "None":
-                                            st.error(f"Error: {error}")
-                                        
-                                        # Agent reasoning
-                                        if thought and thought.strip() and thought != "None":
-                                            with st.expander("Agent Reasoning"):
-                                                st.text_area("", thought, height=150, key=f"thought_{step_num}_{timestamp}", disabled=True)
-                                        
-                                        # Technical details
-                                        if action_details and action_details != "No action" and action_details != "None":
-                                            with st.expander("Technical Details"):
-                                                st.code(action_details, language="json")
-                                    
-                                    st.markdown("---")
+                                        with col2:
+                                            # Display action details
+                                            st.markdown(f"**Action:** `{action_type}`")
+                                            
+                                            if action_description and action_description != action_type:
+                                                st.markdown(f"**Details:** {action_description}")
+                                            
+                                            interacted_element = sd.get("interacted_element", "")
+                                            if interacted_element and interacted_element != "None":
+                                                st.markdown(f"**Clicked Element:** `{interacted_element}`")
+                                            
+                                            if url and url != "None":
+                                                st.markdown(f"**URL:** `{url}`")
+                                            
+                                            # Show title
+                                            title = sd.get("title", "")
+                                            if title and title != "None":
+                                                st.markdown(f"**Page:** {title}")
+                                            
+                                            extracted_content = sd.get("extracted_content", "")
+                                            if extracted_content and extracted_content != "None":
+                                                st.markdown(f"**Extracted Data:**")
+                                                st.text_area("", extracted_content, height=80, key=f"extracted_{display_step_num}_{timestamp}", disabled=True)
+                                            
+                                            error = sd.get("error", "")
+                                            if error and error != "None":
+                                                st.error(f"Error: {error}")
+                                            
+                                            # Agent reasoning
+                                            if thought and thought.strip() and thought != "None":
+                                                with st.expander("Agent Reasoning"):
+                                                    st.text_area("", thought, height=150, key=f"thought_{display_step_num}_{timestamp}", disabled=True)
+                                            
+                                            # Technical details
+                                            if action_details and action_details != "No action" and action_details != "None":
+                                                with st.expander("Technical Details"):
+                                                    st.code(action_details, language="json")
+                                        st.markdown("---")
+                            else:
+                                # If there are filtered steps but no frames available
+                                if filtered_steps and not all_frames:
+                                    st.warning("Detailed step screenshots not available for this run. Still showing step metadata.")
+                                    for sd in filtered_steps:
+                                        display_step_num = sd.get("display_step_number", sd.get("step_number", 0))
+                                        action_type = sd.get("action_type", "Unknown action")
+                                        with st.expander(f"Step {display_step_num}: {action_type}", expanded=(display_step_num <= 3)):
+                                            st.write(sd)
+                                            st.markdown("---")
+                                else:
+                                    st.warning("No steps after filtering or no frames available.")
                         
-                        # Fallback
+                        # Fallback: no steps info, but frames exist
                         elif all_frames:
                             st.warning("Detailed step information not available. Showing all screenshots:")
                             
@@ -469,4 +481,3 @@ if __name__ == "__main__":
     
     # Run main application
     main()
-
