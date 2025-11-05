@@ -3,9 +3,6 @@
 # Browser automation framework 
 browser-use
 
-# OpenAI API client
-openai
-
 # Environment variable management for secure credential storage
 python-dotenv
 
@@ -23,7 +20,8 @@ streamlit
 # - asyncio, base64, json, time, re, hashlib, os, pathlib, typing 
 #   are all part of Python standard library (no installation needed)
 # - Install all dependencies: pip install -r requirements.txt
-# - Create .env file with: GMAIL_USER, GMAIL_PASS, OPENAI_API_KEY
+# - Create .env file with: GMAIL_USER, GMAIL_PASS, BROWSER-USE_API_KEY
+
 
 
 
