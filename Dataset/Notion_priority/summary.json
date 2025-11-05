@@ -1,0 +1,34 @@
+{
+  "task": "go to notion and filter database with priority - low",
+  "success": true,
+  "steps": 11,
+  "urls": [
+    "about:blank",
+    "https://duckduckgo.com/?q=notion+login&ia=web",
+    "https://calendar.notion.so/login",
+    "https://www.notion.so/login",
+    "https://www.notion.so/login",
+    "https://www.notion.so/login",
+    "https://www.notion.so/29e587efb1b380ecb0a1f8d670aa12ed?v=29e587efb1b380f5b118000c829d5a13",
+    "https://www.notion.so/29e587efb1b380ecb0a1f8d670aa12ed?v=29e587efb1b380f5b118000c829d5a13",
+    "https://www.notion.so/29e587efb1b380ecb0a1f8d670aa12ed?v=29e587efb1b380f5b118000c829d5a13",
+    "https://www.notion.so/29e587efb1b380ecb0a1f8d670aa12ed?v=29e587efb1b380f5b118000c829d5a13",
+    "https://www.notion.so/29e587efb1b380ecb0a1f8d670aa12ed?v=29e587efb1b380f5b118000c829d5a13"
+  ],
+  "errors": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "gif": "dataset/go-to-notion-and-filter-database-with-priority-low/2025-11-05-130442/run.gif",
+  "total_frames": 10,
+  "last_frame": "dataset/go-to-notion-and-filter-database-with-priority-low/2025-11-05-130442/frames/frame_last.png"
+}
