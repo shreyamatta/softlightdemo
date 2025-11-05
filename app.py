@@ -6,7 +6,7 @@ import re
 import hashlib
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 from PIL import Image, ImageSequence, ImageStat
 from dotenv import load_dotenv
 from browser_use import Agent, Browser, ChatBrowserUse
@@ -18,11 +18,6 @@ EMAIL = os.getenv("GMAIL_USER")
 APP_PASSWORD = os.getenv("GMAIL_PASS")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-def is_blank_frame(frame: Image.Image, threshold: float = 15.0) -> bool:
-    """Detect if a frame is mostly blank."""
-    gray = frame.convert("L")
-    stat = ImageStat.Stat(gray)
-    return stat.stddev[0] < threshold
 
 # utils
 def slugify(text: str) -> str:
@@ -30,23 +25,48 @@ def slugify(text: str) -> str:
     text = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
     return text or "task"
 
+
 def now_ts() -> str:
     return time.strftime("%Y-%m-%d-%H%M%S")
 
+
 def ensure_dir(p: Path):
     p.mkdir(parents=True, exist_ok=True)
+
 
 def normalize_text(t: str) -> str:
     t = re.sub(r"\s+", " ", t).strip()
     return t[:20000]
 
+
 def sha256(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8", errors="ignore")).hexdigest()
+
+
+def is_blank_frame(frame: Image.Image, threshold: float = 15.0) -> bool:
+    """Detect if a frame is mostly blank."""
+    gray = frame.convert("L")
+    stat = ImageStat.Stat(gray)
+    return stat.stddev[0] < threshold
+
+
+# Extract last frame from GIF
+def extract_last_frame_from_gif(gif_path: Path, output_path: Path):
+    try:
+        with Image.open(gif_path) as im:
+            frames = [frame.copy().convert("RGB") for frame in ImageSequence.Iterator(im)]
+            if frames:
+                frames[-1].save(output_path, "PNG")
+                print(f"Last frame extracted and saved as: {output_path}")
+    except Exception as e:
+        print(f"Could not extract last frame from {gif_path}: {e}")
+
 
 # CDP helpers
 async def cdp(agent: Agent):
     s = await agent.browser_session.get_or_create_cdp_session()
     return s.cdp_client, s.session_id
+
 
 async def cdp_eval(agent: Agent, expression: str) -> Any:
     client, sid = await cdp(agent)
@@ -56,6 +76,7 @@ async def cdp_eval(agent: Agent, expression: str) -> Any:
         session_id=sid,
     )
     return (res.get("result") or {}).get("value")
+
 
 async def set_viewport(agent: Agent, width: int = 1366, height: int = 768, scale: float = 1.0):
     client, sid = await cdp(agent)
@@ -71,61 +92,36 @@ async def set_viewport(agent: Agent, width: int = 1366, height: int = 768, scale
         session_id=sid,
     )
 
+
 # Run
 async def run_task(task: str, dataset_root: Path = Path("dataset")):
     """
     Execute a browser automation task with AI agent.
     """
     enhanced_task = f"""
-    TASK: {task}
+TASK: {task}
 
-    INSTRUCTIONS FOR EXECUTION:
-    1. READ CAREFULLY: Understand the complete task before starting any actions
-    2. BE PRECISE: Follow the exact requirements specified in the task
-    3. BE PATIENT: Wait for pages to fully load before interacting with elements
-    4. BE THOROUGH: Complete all parts of the task, don't stop halfway
-    5. BE SMART: If something doesn't work, try alternative approaches
-    6. BE OBSERVANT: Verify that each action achieved its intended result
+INSTRUCTIONS FOR EXECUTION:
+1. READ CAREFULLY
+2. BE PRECISE
+3. BE PATIENT
+4. BE THOROUGH
+5. BE SMART
+6. BE OBSERVANT
+"""
 
-    BEHAVIORAL GUIDELINES:
-    - Always wait for page elements to be fully visible and clickable before interacting
-    - If you encounter errors, try at least 2-3 alternative approaches before giving up
-    - Read page content carefully to understand context before taking actions
-    - Use scroll actions when needed to find elements not immediately visible
-    - Verify search results, form submissions, and navigation were successful
-    - Extract and report relevant information when completing the task
-
-    ERROR HANDLING:
-    - If an element is not found, scroll the page or wait for it to load
-    - If a click doesn't work, try clicking related elements or using keyboard actions
-    - If navigation fails, retry with slightly different approaches
-    - Document any persistent errors in your final response
-    """
-
-    # login credentials
     if EMAIL and APP_PASSWORD:
         enhanced_task += f"""
-AUTHENTICATION CREDENTIALS (Use ONLY if login is required):
-- Email/Username: {EMAIL}
-- Password: {APP_PASSWORD}
-- Login automatically when you encounter login pages or forms
-- Complete the full authentication flow including any 2FA or verification steps"""
-
-#OTP/2FA HANDLING (not working because of bot detection):
-#- If the website requires OTP/verification code after entering credentials:
-#  1. Open a new tab and navigate to https://mail.google.com
-#  2. Login using: {EMAIL} / {APP_PASSWORD}
-#  3. Check inbox for OTP/verification email
-#  4. Extract the code and use it to complete login
-
+AUTHENTICATION CREDENTIALS:
+- Email: {EMAIL}
+- Password: {APP_PASSWORD}"""
     else:
-        enhanced_task += """
-NOTE: No login credentials available. Skip any tasks requiring authentication.
-"""
+        enhanced_task += "\nNOTE: No login credentials available."
 
     task_slug = slugify(task)
     run_dir = dataset_root / task_slug / now_ts()
     ensure_dir(run_dir)
+
     browser = Browser(use_cloud=False, headless=False)
     llm = ChatBrowserUse()
 
@@ -141,7 +137,7 @@ NOTE: No login credentials available. Skip any tasks requiring authentication.
         step_timeout=180,
     )
 
-    print("Agent configured with enhanced instructions.")
+    print("Agent configured.")
     await asyncio.sleep(0.2)
     try:
         await set_viewport(agent, width=1366, height=768)
@@ -150,25 +146,36 @@ NOTE: No login credentials available. Skip any tasks requiring authentication.
 
     history = await agent.run(max_steps=30)
 
+    await asyncio.sleep(5)  # ensure final frames are written
+
     # Extract GIF frames
     gif_path = run_dir / "run.gif"
     frames_dir = run_dir / "frames"
     ensure_dir(frames_dir)
+    last_frame_path = frames_dir / "frame_last.png"
+
     if gif_path.exists():
         print(f"Extracting frames from GIF: {gif_path}")
         gif = Image.open(gif_path)
         kept_frames = 0
+
         for i, frame in enumerate(ImageSequence.Iterator(gif)):
-            frame = frame.convert("RGB")
+            if i == 0:
+                continue  # skip first frame
+            frame = frame.convert("RGB").copy()
             if is_blank_frame(frame):
                 continue
             frame_path = frames_dir / f"frame_{kept_frames:03d}.png"
             frame.save(frame_path)
             kept_frames += 1
-        print(f"Extracted {kept_frames} non-blank frames.")
 
+        extract_last_frame_from_gif(gif_path, last_frame_path)
+        print(f"Extracted {kept_frames} frames + last frame.")
+    else:
+        print("No GIF generated.")
+
+    # Step extraction 
     steps_data = []
-    print(f"📋 Processing {history.number_of_steps()} steps...")
     history_items = history.history if isinstance(history.history, list) else []
 
     for step_idx, history_item in enumerate(history_items):
@@ -178,7 +185,7 @@ NOTE: No login credentials available. Skip any tasks requiring authentication.
             "thought": "",
             "url": "",
             "action_details": "",
-            "screenshot": f"frame_{step_idx:03d}.png",
+            "screenshot": "",
             "interacted_element": "",
             "action_description": "",
         }
@@ -214,6 +221,7 @@ NOTE: No login credentials available. Skip any tasks requiring authentication.
                         if hasattr(first_action, 'model_dump'):
                             action_dict = first_action.model_dump(exclude_none=True)
                             step_info['action_details'] = json.dumps(action_dict, indent=2)
+                            # Determine action type
                             if 'text' in action_dict:
                                 step_info['action_type'] = 'Input Text'
                                 step_info['action_description'] = f"Type: '{action_dict.get('text', '')[:100]}'"
@@ -233,7 +241,6 @@ NOTE: No login credentials available. Skip any tasks requiring authentication.
                             elif 'scroll' in action_class_name.lower():
                                 step_info['action_type'] = 'Scroll'
                                 step_info['action_description'] = f"Scroll: {action_dict.get('direction', 'down')}"
-
                         else:
                             step_info['action_type'] = action_class_name.replace('Action', '').strip() or 'Browser Action'
 
@@ -251,40 +258,26 @@ NOTE: No login credentials available. Skip any tasks requiring authentication.
 
         steps_data.append(step_info)
 
-    # Filter visible steps for consistent counts
-    visible_steps = []
     for s in steps_data:
-        desc = (s.get("action_description") or "").lower()
-        act_type = (s.get("action_type") or "").lower()
-        if "wait" in act_type or "waited" in desc:
-            continue
-        if s.get("step_number") == 1:
-            continue
-        visible_steps.append(s)
+        if not s.get("action_type") or s.get("action_type").lower() == "unknown":
+            s["action_type"] = "Action"
 
-    for s in visible_steps:
-        if s.get("action_type", "").lower() == "unknown" or not s.get("action_type"):
-            if s.get("action_description"):
-                s["action_type"] = "Action"
-            else:
-                s["action_type"] = "Action"
-
-    # Save step details
     (run_dir / "steps_details.json").write_text(
-        json.dumps(visible_steps, indent=2, ensure_ascii=False),
+        json.dumps(steps_data, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"Saved {len(visible_steps)} visible step details")
+    print(f"Saved {len(steps_data)} steps (no filtering)")
 
-    # Simplified summary
+    frames_count = len(list(frames_dir.glob('*.png'))) if frames_dir.exists() else 0
     summary = {
         "task": task,
         "success": bool(history.is_successful()),
-        "steps": len(visible_steps),  # visible count only
+        "steps": len(steps_data),
         "urls": history.urls(),
         "errors": history.errors(),
         "gif": str(gif_path),
-        "total_frames": len(list(frames_dir.glob('*.png'))),
+        "total_frames": frames_count,
+        "last_frame": str(last_frame_path),
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
